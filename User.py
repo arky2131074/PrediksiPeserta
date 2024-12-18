@@ -1,52 +1,52 @@
 import streamlit as st
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras.models import load_model
-import pickle
+from sklearn.preprocessing import StandardScaler
+import joblib
 
-# Memuat model yang sudah dilatih
-model = load_model("mlp_regression_model.h5")
+# Fungsi untuk memuat model dan scaler
+@st.cache_resource
+def load_artifacts():
+    # Muat model TensorFlow
+    model = load_model("mlp_regression_model.h5", compile=False)
 
-# Memuat preprocessing tools
-with open("preprocessing_tools.pkl", "rb") as f:
-    preprocessing_tools = pickle.load(f)
+    # Muat scaler (disimpan sebelumnya menggunakan joblib)
+    scaler = joblib.load("scaler.pkl")
 
-label_encoders = preprocessing_tools["label_encoders"]
-scaler = preprocessing_tools["scaler"]
+    return model, scaler
 
-# Fungsi untuk encoding aman (mengatasi data yang tidak dikenali)
-def safe_label_encode(encoder, value):
-    if value in encoder.classes_:
-        return encoder.transform([value])[0]
-    else:
-        return -1  # Atur nilai default jika tidak dikenali
+# Fungsi prediksi
+def predict_kehadiran(model, scaler, udiklat, kode_judul, jnspenyelenggaraandiklat, bulan):
+    # Konversi input fitur ke array
+    input_features = np.array([[udiklat, kode_judul, jnspenyelenggaraandiklat, bulan]])
+    
+    # Standardisasi fitur menggunakan scaler
+    input_scaled = scaler.transform(input_features)
+    
+    # Prediksi menggunakan model
+    prediction = model.predict(input_scaled)
+    
+    return prediction[0][0]  # Mengembalikan nilai prediksi tunggal
+
+# Muat model dan scaler
+model, scaler = load_artifacts()
 
 # Judul aplikasi
 st.title("Prediksi Persentase Kehadiran Diklat")
+st.write("Masukkan informasi di bawah ini untuk memprediksi persentase kehadiran diklat.")
 
-# Input pengguna
-udiklat_input = st.text_input("Masukkan UDiklat:")
-kode_judul_input = st.text_input("Masukkan Kode Judul:")
-jnspenyelenggaraandiklat_input = st.text_input("Masukkan Jenis Penyelenggara Diklat:")
-bulan_input = st.slider("Masukkan Bulan (1-12):", min_value=1, max_value=12, step=1)
+# Input dari pengguna
+udiklat = st.number_input("Masukkan UDiklat (dalam angka)", min_value=0, step=1)
+kode_judul = st.number_input("Masukkan Kode Judul (dalam angka)", min_value=0, step=1)
+jnspenyelenggaraandiklat = st.number_input("Masukkan Jenis Penyelenggara Diklat (dalam angka)", min_value=0, step=1)
+bulan = st.slider("Masukkan Bulan", min_value=1, max_value=12, step=1)
 
-# Tombol untuk prediksi
+# Tombol prediksi
 if st.button("Prediksi"):
+    # Lakukan prediksi
     try:
-        # Preprocessing input
-        encoded_udiklat = safe_label_encode(label_encoders['udiklat'], udiklat_input)
-        encoded_kode_judul = safe_label_encode(label_encoders['kode_judul'], kode_judul_input)
-        encoded_jnspenyelenggaraandiklat = safe_label_encode(label_encoders['jnspenyelenggaraandiklat'], jnspenyelenggaraandiklat_input)
-
-        # Menyiapkan fitur input
-        input_features = np.array([[encoded_udiklat, encoded_kode_judul, encoded_jnspenyelenggaraandiklat, bulan_input]])
-
-        # Standardisasi fitur
-        input_scaled = scaler.transform(input_features)
-
-        # Prediksi
-        prediksi = model.predict(input_scaled)
-
-        # Menampilkan hasil prediksi
-        st.success(f"Prediksi persentase kehadiran: {prediksi[0][0]:.2f}%")
+        hasil_prediksi = predict_kehadiran(model, scaler, udiklat, kode_judul, jnspenyelenggaraandiklat, bulan)
+        st.success(f"Prediksi Persentase Kehadiran: {hasil_prediksi:.2f}%")
     except Exception as e:
-        st.error(f"Terjadi kesalahan: {e}")
+        st.error(f"Terjadi error selama prediksi: {str(e)}")
