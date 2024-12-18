@@ -10,11 +10,9 @@ import pandas as pd
 def load_resources():
     # Load model yang telah dilatih
     model = load_model("model_kehadiran.h5")
-    # Load scaler
-    scaler = joblib.load("scaler.pkl")
     # Load label encoders
     encoders = joblib.load("label_encoders.pkl")
-    return model, scaler, encoders
+    return model, encoders
 
 # Fungsi untuk melakukan encoding dengan aman
 def safe_label_encode(encoder, value):
@@ -41,7 +39,7 @@ def predict_kehadiran(model, scaler, encoders, udiklat, kode_judul, jnspenyeleng
     return prediksi[0][0]
 
 # Load model, scaler, dan encoders
-model, scaler, encoders = load_resources()
+model, encoders = load_resources()
 
 # Antarmuka Streamlit
 st.title("Prediksi Persentase Kehadiran Diklat")
