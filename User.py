@@ -1,19 +1,30 @@
 import streamlit as st
 import numpy as np
-import pickle
 from tensorflow.keras.models import load_model
-
+import pickle
+import tensorflow as tf
 # Fungsi untuk memuat model dan preprocessing tools
 @st.cache_resource
 def load_artifacts():
-    # Load model
-    model = load_model("mlp_regression_model.h5")
-    # Load preprocessing tools (LabelEncoders dan Scaler)
+    # Tambahkan fungsi kustom jika ada
+    custom_objects = {
+        "mean_squared_error": tf.keras.losses.MeanSquaredError()
+    }
+
+    # Load model dengan custom_objects
+    model = load_model("mlp_regression_model.h5", custom_objects=custom_objects)
+
+    # Load preprocessing tools
     with open("preprocessing_tools.pkl", "rb") as f:
         tools = pickle.load(f)
     label_encoders = tools["label_encoders"]
     scaler = tools["scaler"]
     return model, label_encoders, scaler
+    try:
+        model, label_encoders, scaler = load_artifacts()
+        st.success("Model dan preprocessing tools berhasil dimuat!")
+    except Exception as e:
+        st.error(f"Terjadi error saat memuat model: {e}")
 
 # Fungsi aman untuk encode label
 def safe_label_encode(encoder, value):
