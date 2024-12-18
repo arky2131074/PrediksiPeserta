@@ -20,11 +20,6 @@ def load_artifacts():
     label_encoders = tools["label_encoders"]
     scaler = tools["scaler"]
     return model, label_encoders, scaler
-    try:
-        model, label_encoders, scaler = load_artifacts()
-        st.success("Model dan preprocessing tools berhasil dimuat!")
-    except Exception as e:
-        st.error(f"Terjadi error saat memuat model: {e}")
 
 # Fungsi aman untuk encode label
 def safe_label_encode(encoder, value):
@@ -52,6 +47,12 @@ def predict_kehadiran(model, scaler, label_encoders, udiklat, kode_judul, jnspen
 
 # Memuat model dan preprocessing tools
 model, label_encoders, scaler = load_artifacts()
+try:
+    model, label_encoders, scaler = load_artifacts()
+    st.success("Model dan preprocessing tools berhasil dimuat!")
+except Exception as e:
+    st.error(f"Terjadi error saat memuat model: {e}")
+
 
 # Tampilan antarmuka Streamlit
 st.title("Prediksi Kehadiran Diklat")
