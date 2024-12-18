@@ -48,7 +48,7 @@ st.title("Prediksi Persentase Kehadiran Diklat")
 st.write("Masukkan informasi berikut untuk memprediksi persentase kehadiran:")
 
 # Input pengguna
-udiklat_input = st.text_input("UDiklat", "JAKARTA")
+udiklat_input = st.text_input("Udiklat", "JAKARTA")
 kode_judul_input = st.text_input("Kode Judul", "A.1.1.20.002.2.20R0.IC")
 jnspenyelenggaraandiklat_input = st.text_input("Jenis Penyelenggara Diklat", "IHT - In House Training (IHT)")
 bulan_input = st.number_input("Bulan (1-12)", min_value=1, max_value=12, value=7)
