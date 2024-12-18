@@ -1,75 +1,62 @@
 import streamlit as st
 import numpy as np
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from tensorflow.keras.models import load_model
-import pickle
-import tensorflow as tf
-# Fungsi untuk memuat model dan preprocessing tools
-@st.cache_resource
-def load_artifacts():
-    # Tambahkan fungsi kustom jika ada
-    custom_objects = {
-        "mean_squared_error": tf.keras.losses.MeanSquaredError()
-    }
+import joblib  # Untuk menyimpan dan memuat scaler dan encoder
+import pandas as pd
 
-    # Load model dengan custom_objects
-    model = load_model("mlp_regression_model.h5", custom_objects=custom_objects)
+# Fungsi untuk load model dan encoders
+@st.cache(allow_output_mutation=True)
+def load_resources():
+    # Load model yang telah dilatih
+    model = load_model("model_kehadiran.h5")
+    # Load scaler
+    scaler = joblib.load("scaler.pkl")
+    # Load label encoders
+    encoders = joblib.load("label_encoders.pkl")
+    return model, scaler, encoders
 
-    # Load preprocessing tools
-    with open("preprocessing_tools.pkl", "rb") as f:
-        tools = pickle.load(f)
-    label_encoders = tools["label_encoders"]
-    scaler = tools["scaler"]
-    return model, label_encoders, scaler
-
-# Fungsi aman untuk encode label
+# Fungsi untuk melakukan encoding dengan aman
 def safe_label_encode(encoder, value):
     try:
         return encoder.transform([value])[0]
     except ValueError:
-        return -1  # Nilai default jika tidak ditemukan
+        return -1  # Nilai default untuk kategori yang tidak dikenal
 
-# Fungsi prediksi
-def predict_kehadiran(model, scaler, label_encoders, udiklat, kode_judul, jnspenyelenggaraandiklat, bulan):
+# Fungsi untuk melakukan prediksi
+def predict_kehadiran(model, scaler, encoders, udiklat, kode_judul, jnspenyelenggaraandiklat, bulan):
     # Encode fitur kategorikal
-    encoded_udiklat = safe_label_encode(label_encoders['udiklat'], udiklat)
-    encoded_kode_judul = safe_label_encode(label_encoders['kode_judul'], kode_judul)
-    encoded_jnspenyelenggaraandiklat = safe_label_encode(label_encoders['jnspenyelenggaraandiklat'], jnspenyelenggaraandiklat)
-    
-    # Buat array input
+    encoded_udiklat = safe_label_encode(encoders['udiklat'], udiklat)
+    encoded_kode_judul = safe_label_encode(encoders['kode_judul'], kode_judul)
+    encoded_jnspenyelenggaraandiklat = safe_label_encode(encoders['jnspenyelenggaraandiklat'], jnspenyelenggaraandiklat)
+
+    # Membentuk array input
     input_features = np.array([[encoded_udiklat, encoded_kode_judul, encoded_jnspenyelenggaraandiklat, bulan]])
-    
+
     # Standardisasi input
     input_scaled = scaler.transform(input_features)
-    
+
     # Prediksi
     prediksi = model.predict(input_scaled)
     return prediksi[0][0]
 
-# Memuat model dan preprocessing tools
-model, label_encoders, scaler = load_artifacts()
-try:
-    model, label_encoders, scaler = load_artifacts()
-    st.success("Model dan preprocessing tools berhasil dimuat!")
-except Exception as e:
-    st.error(f"Terjadi error saat memuat model: {e}")
+# Load model, scaler, dan encoders
+model, scaler, encoders = load_resources()
 
+# Antarmuka Streamlit
+st.title("Prediksi Persentase Kehadiran Diklat")
+st.write("Masukkan informasi berikut untuk memprediksi persentase kehadiran:")
 
-# Tampilan antarmuka Streamlit
-st.title("Prediksi Kehadiran Diklat")
-st.write("Masukkan informasi berikut untuk memprediksi kehadiran peserta diklat:")
-
-# Input dari user
-udiklat = st.selectbox("Udiklat:", options=label_encoders['udiklat'].classes_)
-kode_judul = st.selectbox("Kode Judul:", options=label_encoders['kode_judul'].classes_)
-jnspenyelenggaraandiklat = st.selectbox("Jenis Penyelenggaraan Diklat:", options=label_encoders['jnspenyelenggaraandiklat'].classes_)
-bulan = st.number_input("Bulan Diklat (1-12):", min_value=1, max_value=12, step=1)
+# Input pengguna
+udiklat_input = st.text_input("UDiklat", "JAKARTA")
+kode_judul_input = st.text_input("Kode Judul", "A.1.1.20.002.2.20R0.IC")
+jnspenyelenggaraandiklat_input = st.text_input("Jenis Penyelenggara Diklat", "IHT - In House Training (IHT)")
+bulan_input = st.number_input("Bulan (1-12)", min_value=1, max_value=12, value=7)
 
 # Tombol prediksi
 if st.button("Prediksi Kehadiran"):
-    try:
-        hasil_prediksi = predict_kehadiran(
-            model, scaler, label_encoders, udiklat, kode_judul, jnspenyelenggaraandiklat, bulan
-        )
-        st.success(f"Prediksi Kehadiran: {hasil_prediksi:.2f}%")
-    except Exception as e:
-        st.error(f"Terjadi kesalahan saat prediksi: {e}")
+    prediksi_kehadiran = predict_kehadiran(
+        model, scaler, encoders, 
+        udiklat_input, kode_judul_input, jnspenyelenggaraandiklat_input, bulan_input
+    )
+    st.success(f"Prediksi persentase kehadiran: {prediksi_kehadiran:.2f}%")
